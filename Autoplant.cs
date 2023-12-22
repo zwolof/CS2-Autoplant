@@ -18,138 +18,138 @@ namespace Autoplant
 
         public override void Load(bool hotReload)
         {
-			RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
-			RegisterEventHandler<EventRoundFreezeEnd>(OnFreezeTimeEnd);
+            RegisterEventHandler<EventRoundEnd>(OnRoundEnd);
+            RegisterEventHandler<EventRoundFreezeEnd>(OnFreezeTimeEnd);
         }
 
-		private HookResult OnFreezeTimeEnd(EventRoundFreezeEnd @event, GameEventInfo info) 
-		{
-			var pBombCarrierController = this.GetBombCarrier();
+        private HookResult OnFreezeTimeEnd(EventRoundFreezeEnd @event, GameEventInfo info) 
+        {
+            var pBombCarrierController = this.GetBombCarrier();
 
-			if(pBombCarrierController == null)
-			{
-				return HookResult.Continue;
-			}
+            if(pBombCarrierController == null)
+            {
+                return HookResult.Continue;
+            }
 
-			if(!pBombCarrierController.PlayerPawn.Value!.InBombZone)
-			{
-				return HookResult.Continue;
-			}
+            if(!pBombCarrierController.PlayerPawn.Value!.InBombZone)
+            {
+                return HookResult.Continue;
+            }
 
-			this.CreatePlantedC4(pBombCarrierController);
+            this.CreatePlantedC4(pBombCarrierController);
 
-			return HookResult.Continue;
-		}
+            return HookResult.Continue;
+        }
 
-		public bool CreatePlantedC4(CCSPlayerController bombCarrier)
-		{
-			var gameRules = this.GetGameRules();
+        public bool CreatePlantedC4(CCSPlayerController bombCarrier)
+        {
+            var gameRules = this.GetGameRules();
 
-			if(bombCarrier == null || gameRules == null)
-			{
-				return false;
-			}
-			
-			var prop = Utilities.CreateEntityByName<CBaseModelEntity>("planted_c4");
+            if(bombCarrier == null || gameRules == null)
+            {
+                return false;
+            }
+            
+            var prop = Utilities.CreateEntityByName<CBaseModelEntity>("planted_c4");
 
-			if (prop == null) 
-			{
-				return false;
-			}
+            if (prop == null) 
+            {
+                return false;
+            }
 
-			var playerOrigin = bombCarrier.PlayerPawn.Value!.AbsOrigin;
+            var playerOrigin = bombCarrier.PlayerPawn.Value!.AbsOrigin;
 
-			if(playerOrigin == null)
-			{
-				return false;
-			}
+            if(playerOrigin == null)
+            {
+                return false;
+            }
 
-			playerOrigin.Z -= bombCarrier.PlayerPawn.Value.Collision.Mins.Z;
+            playerOrigin.Z -= bombCarrier.PlayerPawn.Value.Collision.Mins.Z;
 
-			prop.DispatchSpawn();
+            prop.DispatchSpawn();
 
-			CPlantedC4 plantedC4 = new CPlantedC4(prop.Handle);
+            CPlantedC4 plantedC4 = new CPlantedC4(prop.Handle);
 
-			Server.NextFrame(() =>
-			{
-				prop.Teleport(playerOrigin, new QAngle(IntPtr.Zero, IntPtr.Zero, IntPtr.Zero), new Vector(0, 0, 0));
+            Server.NextFrame(() =>
+            {
+                prop.Teleport(playerOrigin, new QAngle(IntPtr.Zero, IntPtr.Zero, IntPtr.Zero), new Vector(0, 0, 0));
 
-				gameRules.BombPlanted = true;
+                gameRules.BombPlanted = true;
 
-				// This works but it's not the best way to do it(questionable decision)
-				plantedC4.BombTicking = true;
+                // This works but it's not the best way to do it(questionable decision)
+                plantedC4.BombTicking = true;
 
-				this.SendBombPlantedEvent(bombCarrier);
-				// this.RemoveC4FromCarrier(bombCarrier);
-				
-				Server.PrintToChatAll($"[{ChatColors.Red}Autoplant{ChatColors.Default}] {ChatColors.Green}Bomb has been planted!");
-			});
+                this.SendBombPlantedEvent(bombCarrier);
+                // this.RemoveC4FromCarrier(bombCarrier);
+                
+                Server.PrintToChatAll($"[{ChatColors.Red}Autoplant{ChatColors.Default}] {ChatColors.Green}Bomb has been planted!");
+            });
 
-			return true;
-		}
+            return true;
+        }
 
         private HookResult OnRoundEnd(EventRoundEnd @event, GameEventInfo info) {
-			var gameRules = GetGameRules();
+            var gameRules = GetGameRules();
 
-			if(gameRules == null) 
-			{
-				return HookResult.Continue;
-			}
+            if(gameRules == null) 
+            {
+                return HookResult.Continue;
+            }
 
-			gameRules.BombPlanted = false;
+            gameRules.BombPlanted = false;
 
-			return HookResult.Continue;
-		}
+            return HookResult.Continue;
+        }
 
-		public CCSPlayerController? GetBombCarrier()
-		{
-			CCSPlayerController? foundPlayer = null;
+        public CCSPlayerController? GetBombCarrier()
+        {
+            CCSPlayerController? foundPlayer = null;
 
-			foreach (var player in Utilities.GetPlayers())
-			{
-				if(player.PlayerPawn.Value!.WeaponServices == null) continue;
-				
-				foreach (var weapon in player.PlayerPawn.Value.WeaponServices.MyWeapons)
-				{
-					if (weapon.Value == null) continue;
-					if (weapon.Value.DesignerName != "weapon_c4") continue;
+            foreach (var player in Utilities.GetPlayers())
+            {
+                if(player.PlayerPawn.Value!.WeaponServices == null) continue;
+                
+                foreach (var weapon in player.PlayerPawn.Value.WeaponServices.MyWeapons)
+                {
+                    if (weapon.Value == null) continue;
+                    if (weapon.Value.DesignerName != "weapon_c4") continue;
 
-					foundPlayer = player;
-					break;
-				}
-			}
+                    foundPlayer = player;
+                    break;
+                }
+            }
 
-			return foundPlayer;
-		}
+            return foundPlayer;
+        }
 
-		public bool RemoveC4FromCarrier(CCSPlayerController bombCarrier)
-		{
-			if(bombCarrier == null)
-			{
-				return false;
-			}
+        public bool RemoveC4FromCarrier(CCSPlayerController bombCarrier)
+        {
+            if(bombCarrier == null)
+            {
+                return false;
+            }
 
-			bombCarrier.PlayerPawn.Value!.WeaponServices!.MyWeapons!.Where(x => x.Value!.DesignerName == "weapon_c4").First().Value!.Remove();
-			
-			return true;
-		}
+            bombCarrier.PlayerPawn.Value!.WeaponServices!.MyWeapons!.Where(x => x.Value!.DesignerName == "weapon_c4").First().Value!.Remove();
+            
+            return true;
+        }
 
-		// Credits: killstr3ak
-		public CCSGameRules GetGameRules()
-		{
-			return Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
-		}
+        // Credits: killstr3ak
+        public CCSGameRules GetGameRules()
+        {
+            return Utilities.FindAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").First().GameRules!;
+        }
 
-		public void SendBombPlantedEvent(CCSPlayerController bombCarrier) {
-			if(bombCarrier.PlayerPawn.Value == null) {
-				return;
-			}
+        public void SendBombPlantedEvent(CCSPlayerController bombCarrier) {
+            if(bombCarrier.PlayerPawn.Value == null) {
+                return;
+            }
 
-			var eventPtr = NativeAPI.CreateEvent("bomb_planted", true);
-			NativeAPI.SetEventPlayerController(eventPtr, "userid", bombCarrier.Handle);
-			NativeAPI.SetEventInt(eventPtr, "userid", (int)bombCarrier.PlayerPawn.Value.Index);
+            var eventPtr = NativeAPI.CreateEvent("bomb_planted", true);
+            NativeAPI.SetEventPlayerController(eventPtr, "userid", bombCarrier.Handle);
+            NativeAPI.SetEventInt(eventPtr, "userid", (int)bombCarrier.PlayerPawn.Value.Index);
 
-			NativeAPI.FireEvent(eventPtr, false);
-		}
-	}
+            NativeAPI.FireEvent(eventPtr, false);
+        }
+    }
 }
