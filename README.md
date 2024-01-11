@@ -1,4 +1,4 @@
-# CS2-Autoplant
+# CS2-Autoplant (DO NOT USE - C4 CANNOT BE DEFUSED)
  The Autoplant plugin is a plugin for CounterStrikeSharp that automatically plants the bomb after freezetime ends.
 
 # Features
